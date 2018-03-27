@@ -1,2 +1,2 @@
-# Ignore test directory
-test
+# Ignore test directory and files
+test*
