@@ -31,7 +31,7 @@ exit 0;
 sub print_citation {
   my $record = shift;
   my $citation = '';
-  printf "%s (%s). %s. %s. %s\n", get_authors($record), get_date($record), get_title($record), get_imprint($record), get_permlink($record);
+  printf "%s (%s). %s. %s. %s\n\n", get_authors($record), get_date($record), get_title($record), get_imprint($record), get_permlink($record);
 }
 
 ##############################
