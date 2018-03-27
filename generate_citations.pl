@@ -13,6 +13,8 @@ if ($#ARGV != 0) {
 }
 
 my $infile = $ARGV[0];
+# Output may include utf8 from MARC
+binmode STDOUT, ':utf8';
 
 my $batch = MARC::Batch->new('USMARC', $infile);
 
