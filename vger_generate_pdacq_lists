@@ -1,0 +1,92 @@
+#!/bin/sh
+# Uses arrays, which apparently *don't* require bash.
+
+# All happens here: exit if dir doesn't exist or can't change into it.
+DIR=/m1/voyager/ucladb/local/pdacq_subjects
+cd ${DIR}
+if [ $? -gt 0 ]; then
+  echo ${DIR} missing or restricted - exiting
+  exit 1
+fi
+
+##############################
+# Modify sql/TEMPLATE.sql to append search terms for actual query.
+_create_query() {
+  # Copy template file
+  SQL_FILE=/tmp/${PREFIX}_$$.sql
+  cp ${DIR}/sql/TEMPLATE.sql ${SQL_FILE}
+  # Split QUERY_TERMS on tilde delimiter.
+  IFS='~' read -r -a TERMS <<< "${QUERY_TERMS}"
+  for INDEX in "${!TERMS[@]}"; do
+    TERM="${TERMS[INDEX]}"
+    echo "${INDEX} ===> ${TERM}"
+	if [ ${INDEX} -gt 0 ]; then
+	  echo "    OR" >> ${SQL_FILE}
+    fi
+	echo "  regexp_like(bs.subfield, '(^|\W)${TERM}(\W|$)', 'i')" >> ${SQL_FILE}
+  done
+  echo ") order by b.bib_id;" >> ${SQL_FILE}
+}
+
+##############################
+# Run query to get list of bib ids.
+_run_query() {
+  SCHEMA=ucla_preaddb
+  ${VGER_SCRIPT}/vger_sqlplus_run ${SCHEMA} ${SQL_FILE}
+  rm ${SQL_FILE}
+
+  LIST_FILE=${SQL_FILE}.out
+  RECORDS=`cat ${LIST_FILE} | wc -l`
+  echo "Query found ${RECORDS} records"
+}
+
+##############################
+# Extract MARC bib records from ids in list.
+_extract_marc() {
+  MARC_FILE=/tmp/${PREFIX}_$$.mrc
+  # We only care about ucladb
+  /m1/voyager/ucladb/sbin/Pmarcexport -rB -mM -t${LIST_FILE} -o${MARC_FILE} -q
+  rm ${LIST_FILE}
+}
+
+##############################
+# Generate citations from MARC records.
+_generate_citations() {
+  ${DIR}/generate_citations.pl ${MARC_FILE} > /tmp/${PREFIX}_$$_citations.txt
+###  rm ${MARC_FILE}
+}
+
+##############################
+# Main routine of script starts here.
+
+clear #DEBUGGING
+
+# Prefix for generated files, for clarity while avoiding conflicts.
+PREFIX=PDACQ
+
+# Iterate through config file to get data for each citation file to be generated.
+# Format: SUBJECT|QUERY~TERMS|CONTACT NAME|CONTACT DESC|CONTACT EMAIL
+CONFIG=${DIR}/config.lst
+cat ${CONFIG} | \
+  while read LINE; do
+    IFS='|' read -r -a VALUES <<< "${LINE}"
+
+	SUBJECT=${VALUES[0]}
+	QUERY_TERMS=${VALUES[1]}
+	CONTACT_NAME=${VALUES[2]}
+	CONTACT_DESC=${VALUES[3]}
+	CONTACT_EMAIL=${VALUES[4]}
+
+    echo "================================"
+    echo $SUBJECT
+    echo $QUERY_TERMS
+	echo "$CONTACT_NAME, $CONTACT_DESC ($CONTACT_EMAIL)"
+
+    # Reminder: All shell variables are global, unless we use 'local' inside a function.
+    # Pass "parameters" for convenience, but not needed as written.
+	_create_query "${QUERY_TERMS}"
+	_run_query ${SQL_FILE}
+    _extract_marc ${LIST_FILE}
+    _generate_citations ${MARC_FILE}
+  done
+unset IFS
