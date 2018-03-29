@@ -111,8 +111,7 @@ sub get_permlink {
 # Then remove any trailing spaces.
 sub trim_punctuation {
   my $string = shift;
-  $string =~ s/[[:punct:]]$//g;
-  #$string =~ s/\s*$//;
+  $string =~ s/[[:punct:]]{0,}$//g;
   $string =~ s/[[:space:]]$//g;
   return $string;
 }
