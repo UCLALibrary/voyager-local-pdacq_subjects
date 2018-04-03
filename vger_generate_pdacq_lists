@@ -17,12 +17,14 @@ _create_query() {
   cp ${DIR}/sql/TEMPLATE.sql ${SQL_FILE}
   # Split QUERY_TERMS on tilde delimiter.
   IFS='~' read -r -a TERMS <<< "${QUERY_TERMS}"
+  # Need to know position in array via INDEX, so we can add OR when needed.
   for INDEX in "${!TERMS[@]}"; do
     TERM="${TERMS[INDEX]}"
     echo "${INDEX} ===> ${TERM}"
 	if [ ${INDEX} -gt 0 ]; then
 	  echo "    OR" >> ${SQL_FILE}
     fi
+    # Query subfield via regex, looking for TERM at start/end of subfield or surrounded by non-word characters (\W).
 	echo "  regexp_like(bs.subfield, '(^|\W)${TERM}(\W|$)', 'i')" >> ${SQL_FILE}
   done
   echo ") order by b.bib_id;" >> ${SQL_FILE}
