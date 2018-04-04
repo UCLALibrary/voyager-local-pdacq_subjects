@@ -54,8 +54,26 @@ _extract_marc() {
 ##############################
 # Generate citations from MARC records.
 _generate_citations() {
-  ${DIR}/generate_citations.pl ${MARC_FILE} > /tmp/${PREFIX}_$$_citations.txt
-###  rm ${MARC_FILE}
+  ${DIR}/generate_citations.pl ${MARC_FILE} 
+  rm ${MARC_FILE}
+}
+
+##############################
+# Print header and citations to generate the report.
+_print_report() {
+  # Use global variables initialized in main routine.
+  REPORT_FILE="${DIR}/reports/${SUBJECT}.txt"
+  MONTH_YEAR=`date "+%B %Y"`
+  # Replace previous file for this subject.
+  echo "Not Currently Owned: Patron-Driven Acquisitions Report" > ${REPORT_FILE}
+  echo "" >> ${REPORT_FILE}
+  echo "${MONTH_YEAR}: ${SUBJECT} titles in the UCLA Library Catalog:" >> ${REPORT_FILE}
+  echo "If you would like to recommend purchases, follow the links to the UCLA Library catalog, and click 'Request an Item'." >> ${REPORT_FILE}
+  echo "" >> ${REPORT_FILE}
+  echo "Contact: ${CONTACT_NAME}, ${CONTACT_DESC}, ${CONTACT_EMAIL}" >> ${REPORT_FILE}
+  echo "" >> ${REPORT_FILE}
+  # Finally, print the citations.
+  _generate_citations ${MARC_FILE} >> ${REPORT_FILE}
 }
 
 ##############################
@@ -89,6 +107,9 @@ cat ${CONFIG} | \
 	_create_query "${QUERY_TERMS}"
 	_run_query ${SQL_FILE}
     _extract_marc ${LIST_FILE}
-    _generate_citations ${MARC_FILE}
+
+	# Generate the full report
+	_print_report
+
   done
 unset IFS
